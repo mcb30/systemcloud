@@ -36,6 +36,7 @@ setup(
     packages=['ocf', 'systemcloud'],
     entry_points={
         'resource_agents': [
+            'systemcloud.galera = systemcloud.galera:GaleraAgent.main',
         ],
     },
 )
