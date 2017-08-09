@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+"""Installation script"""
 
 import textwrap
 from setuptools import setup
+from ocf.setuptools import ResourceAgentInstall, ResourceAgentInstallScripts
 
 setup(
     name="systemcloud",
@@ -27,5 +29,13 @@ setup(
         'Topic :: System :: Clustering',
         'Topic :: System :: Systems Administration',
     ],
+    cmdclass={
+        'install': ResourceAgentInstall,
+        'install_scripts': ResourceAgentInstallScripts,
+    },
     packages=['ocf', 'systemcloud'],
+    entry_points={
+        'resource_agents': [
+        ],
+    },
 )
