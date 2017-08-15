@@ -196,8 +196,9 @@ class GaleraAgent(ResourceAgent):
         if self.state is not None:
             return self.state.seqno
 
-    def configure(self, wsrep_recovery_log=None):
-        """Generate configuration files"""
+    def reconfigure(self, wsrep_recovery_log=None):
+        """Reconfigure service"""
+        # pylint: disable=locally-disabled, arguments-differ
         masters = self.current_master_unames
         promoting = self.meta_name == 'promote'
         wsrep_peers = (masters if promoting or self.node in masters
@@ -301,7 +302,7 @@ class GaleraAgent(ResourceAgent):
         """
         logfile = os.path.join(self.datadir, 'wsrep-recovery-%s.log' % uuid4())
         self.logger.info("Attempting recovery to %s", logfile)
-        self.configure(wsrep_recovery_log=logfile)
+        self.reconfigure(wsrep_recovery_log=logfile)
         self.systemctl_start(self.service)
         # Service should have stopped immediately after performing
         # recovery, but force a stop just in case.
@@ -372,17 +373,6 @@ class GaleraAgent(ResourceAgent):
             raise ocf.ConfiguredError("Must have more than one master")
         return ocf.SUCCESS
 
-    def action_notify(self):
-        """Notify resource of changes"""
-        # Update configuration file to ensure that any restart of the
-        # underlying database will pick up the correct parameters.
-        notification = self.notification
-        self.logger.info("Notified %s: %s (masters: %s)", notification,
-                         ','.join(notification.unames),
-                         ','.join(self.current_master_unames))
-        self.configure()
-        return ocf.SUCCESS
-
     def action_monitor(self):
         """Monitor resource"""
         # Fail if parameters are invalid
@@ -411,7 +401,7 @@ class GaleraAgent(ResourceAgent):
         # Prevent automatic promotion on restart
         self.trigger_demote()
         # Rewrite configuration files
-        self.configure()
+        self.reconfigure()
         # Record state parameters (performing recovery if needed)
         self.state = self.read_grastate() or self.recover_grastate()
         # Check that UUID matches cluster UUID, if already set
@@ -439,7 +429,7 @@ class GaleraAgent(ResourceAgent):
             if self.uuid not in (ZERO_UUID_STRING, self.cluster_uuid):
                 raise ocf.GenericError("UUID does not match cluster UUID")
         # Update configuration file
-        self.configure()
+        self.reconfigure()
         # Start underlying database service
         self.logger.info("Beginning at %s", self.state)
         self.systemctl_start(self.service)

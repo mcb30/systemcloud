@@ -12,6 +12,14 @@ class ResourceAgent(ocf.ResourceAgent):
         """Service name"""
         raise NotImplementedError
 
+    def reconfigure(self):
+        """Reconfigure service
+
+        This will be called on every start, stop, promote, demote, or
+        notify action.
+        """
+        pass
+
     def systemctl(self, action, unit=None):
         """Perform an action via systemctl"""
         if unit is None:
@@ -47,9 +55,18 @@ class ResourceAgent(ocf.ResourceAgent):
         except ocf.GenericError:
             return ocf.NOT_RUNNING
 
+    def action_notify(self):
+        """Notify resource of changes"""
+        notification = self.notification
+        self.logger.info("Notifying %s: %s", notification,
+                         ','.join(notification.unames))
+        self.reconfigure()
+        return ocf.SUCCESS
+
     def action_start(self):
         """Start resource"""
         self.logger.info("Starting")
+        self.reconfigure()
         output = self.systemctl_start()
         if output:
             self.logger.info(output)
@@ -58,6 +75,7 @@ class ResourceAgent(ocf.ResourceAgent):
     def action_stop(self):
         """Stop resource"""
         self.logger.info("Stopping")
+        self.reconfigure()
         output = self.systemctl_stop()
         if output:
             self.logger.info(output)
