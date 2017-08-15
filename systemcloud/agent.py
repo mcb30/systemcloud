@@ -49,6 +49,7 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def action_monitor(self):
         """Monitor resource"""
+        self.action_validate()
         try:
             self.systemctl_is_active()
             return ocf.SUCCESS
@@ -74,6 +75,7 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def action_stop(self):
         """Stop resource"""
+        self.action_validate()
         self.logger.info("Stopping")
         self.reconfigure()
         output = self.systemctl_stop()
