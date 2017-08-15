@@ -3,7 +3,15 @@
 
 import textwrap
 from setuptools import setup
+from setuptools.command.sdist import sdist
 from ocf.setuptools import ResourceAgentInstall, ResourceAgentInstallScripts
+
+class SystemCloudSDist(sdist):
+    """Hack to work around a missing feature in setuptools.command.sdist"""
+    def make_distribution(self):
+        for _dirname, filenames in self.distribution.data_files:
+            self.filelist.extend(filenames)
+        sdist.make_distribution(self)
 
 setup(
     name="systemcloud",
@@ -32,6 +40,7 @@ setup(
     cmdclass={
         'install': ResourceAgentInstall,
         'install_scripts': ResourceAgentInstallScripts,
+        'sdist': SystemCloudSDist,
     },
     packages=['ocf', 'systemcloud'],
     entry_points={
