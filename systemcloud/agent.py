@@ -49,6 +49,7 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def action_start(self):
         """Start resource"""
+        self.logger.info("Starting")
         output = self.systemctl_start()
         if output:
             self.logger.info(output)
@@ -56,6 +57,7 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def action_stop(self):
         """Stop resource"""
+        self.logger.info("Stopping")
         output = self.systemctl_stop()
         if output:
             self.logger.info(output)
