@@ -273,7 +273,7 @@ class ResourceAgent(object):
         removed = self.meta_notify_resources(remove)
         if labelled is None and added is None and removed is None:
             return None
-        return sorted(list((set(labelled) | set(added) - set(removed))))
+        return sorted(list((set(labelled) | set(added)) - set(removed)))
 
     def future_unames(self, label, add, remove):
         """Future node names
@@ -286,7 +286,7 @@ class ResourceAgent(object):
         removed = self.meta_notify_unames(remove)
         if labelled is None and added is None and removed is None:
             return None
-        return sorted(list((set(labelled) | set(added) - set(removed))))
+        return sorted(list((set(labelled) | set(added)) - set(removed)))
 
     def future_peers(self, label, add, remove):
         """Future peers
