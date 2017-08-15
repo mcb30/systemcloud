@@ -7,10 +7,15 @@ import ocf
 class ResourceAgent(ocf.ResourceAgent):
     """A resource agent for a systemd service"""
 
+    @property
+    def service(self):
+        """Service name"""
+        raise NotImplementedError
+
     def systemctl(self, action, unit=None):
         """Perform an action via systemctl"""
         if unit is None:
-            unit = self.name
+            unit = self.service
         command = ('systemctl', action, unit)
         try:
             output = subprocess.check_output(command, stderr=subprocess.STDOUT)
