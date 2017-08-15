@@ -46,6 +46,11 @@ setup(
     entry_points={
         'resource_agents': [
             'systemcloud.galera = systemcloud.galera:GaleraAgent.main',
+            'systemcloud.rabbitmq = systemcloud.rabbitmq:RabbitAgent.main',
         ],
     },
+    data_files=[
+        ('/usr/lib/systemd/system/rabbitmq-server.service.d',
+         ['data/rabbitmq/systemcloud.conf']),
+    ],
 )
