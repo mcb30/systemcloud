@@ -38,6 +38,18 @@ def meta_notify_peers_property(label):
     """Construct property for notification peers"""
     return property(lambda self: self.meta_notify_peers(label))
 
+def future_resources_property(label, add, remove):
+    """Construct property for future resources"""
+    return property(lambda self: self.future_resources(label, add, remove))
+
+def future_unames_property(label, add, remove):
+    """Construct property for future node names"""
+    return property(lambda self: self.future_unames(label, add, remove))
+
+def future_peers_property(label, add, remove):
+    """Construct property for future peers"""
+    return property(lambda self: self.future_peers(label, add, remove))
+
 def current_resources_property(label, add, remove):
     """Construct property for current resources"""
     return property(lambda self: self.current_resources(label, add, remove))
@@ -49,6 +61,9 @@ def current_unames_property(label, add, remove):
 def current_peers_property(label, add, remove):
     """Construct property for current peers"""
     return property(lambda self: self.current_peers(label, add, remove))
+
+active_add_remove = ('active', 'start', 'stop')
+master_add_remove = ('master', 'promote', 'demote')
 
 
 class Notification(object):
@@ -244,17 +259,46 @@ class ResourceAgent(object):
         """Notification peers"""
         return [self.peer(x) for x in self.meta_notify_unames(label)]
 
+    def future_resources(self, label, add, remove):
+        """Future resources
+
+        This is the list of resources that will be in effect once the
+        current operation has completed.
+        """
+        resources = set(self.meta_notify_resources(label))
+        resources |= set(self.meta_notify_resources(add))
+        resources -= set(self.meta_notify_resources(remove))
+        return sorted(list(resources))
+
+    def future_unames(self, label, add, remove):
+        """Future node names
+
+        This is the list of node names that will be in effect once the
+        current operation has completed.
+        """
+        unames = set(self.meta_notify_unames(label))
+        unames |= set(self.meta_notify_unames(add))
+        unames -= set(self.meta_notify_unames(remove))
+        return sorted(list(unames))
+
+    def future_peers(self, label, add, remove):
+        """Future peers
+
+        This is the list of node names that will be in effect once the
+        current operation has completed.
+        """
+        return [self.peer(x) for x in self.future_unames(label, add, remove)]
+
     def current_resources(self, label, add, remove):
         """Current resources
 
-        This list is corrected for the effects of post-transition
+        This list is corrected for the effects of post-operation
         notifications.
         """
-        resources = set(self.meta_notify_resources(label))
         if self.meta_notify_type == 'post':
-            resources |= set(self.meta_notify_resources(add))
-            resources -= set(self.meta_notify_resources(remove))
-        return sorted(list(resources))
+            return self.future_resources(label, add, remove)
+        else:
+            return sorted(self.meta_notify_resources(label))
 
     def current_unames(self, label, add, remove):
         """Current node names
@@ -262,11 +306,10 @@ class ResourceAgent(object):
         This list is corrected for the effects of post-transition
         notifications.
         """
-        unames = set(self.meta_notify_unames(label))
         if self.meta_notify_type == 'post':
-            unames |= set(self.meta_notify_unames(add))
-            unames -= set(self.meta_notify_unames(remove))
-        return sorted(list(unames))
+            return self.future_unames(label, add, remove)
+        else:
+            return sorted(self.meta_notify_unames(label))
 
     def current_peers(self, label, add, remove):
         """Current peers
@@ -303,12 +346,19 @@ class ResourceAgent(object):
     meta_notify_stop_unames = meta_notify_unames_property('stop')
     meta_notify_stop_peers = meta_notify_peers_property('stop')
 
-    active_resources = current_resources_property('active', 'start', 'stop')
-    active_unames = current_unames_property('active', 'start', 'stop')
-    active_peers = current_peers_property('active', 'start', 'stop')
-    master_resources = current_resources_property('master', 'promote', 'demote')
-    master_unames = current_unames_property('master', 'promote', 'demote')
-    master_peers = current_peers_property('master', 'promote', 'demote')
+    future_active_resources = future_resources_property(*active_add_remove)
+    future_active_unames = future_unames_property(*active_add_remove)
+    future_active_peers = future_peers_property(*active_add_remove)
+    future_master_resources = future_resources_property(*master_add_remove)
+    future_master_unames = future_unames_property(*master_add_remove)
+    future_master_peers = future_peers_property(*master_add_remove)
+
+    current_active_resources = current_resources_property(*active_add_remove)
+    current_active_unames = current_unames_property(*active_add_remove)
+    current_active_peers = current_peers_property(*active_add_remove)
+    current_master_resources = current_resources_property(*master_add_remove)
+    current_master_unames = current_unames_property(*master_add_remove)
+    current_master_peers = current_peers_property(*master_add_remove)
 
     @property
     def notification(self):

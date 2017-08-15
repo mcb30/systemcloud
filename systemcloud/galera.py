@@ -198,7 +198,7 @@ class GaleraAgent(ResourceAgent):
 
     def configure(self, wsrep_recovery_log=None):
         """Generate configuration files"""
-        masters = self.master_unames
+        masters = self.current_master_unames
         promoting = self.meta_name == 'promote'
         wsrep_peers = (masters if promoting or self.node in masters
                        else ('--NOT-ALLOWED--',))
@@ -379,7 +379,7 @@ class GaleraAgent(ResourceAgent):
         notification = self.notification
         self.logger.info("Notified %s: %s (masters: %s)", notification,
                          ','.join(notification.unames),
-                         ','.join(self.master_unames))
+                         ','.join(self.current_master_unames))
         self.configure()
         return ocf.SUCCESS
 
@@ -419,7 +419,7 @@ class GaleraAgent(ResourceAgent):
             if self.uuid not in (ZERO_UUID_STRING, self.cluster_uuid):
                 raise ocf.GenericError("UUID does not match cluster UUID")
         # Join existing cluster or bootstrap new cluster, as applicable
-        if self.master_unames:
+        if self.current_master_unames:
             self.logger.info("Triggering promotion")
             self.trigger_promote()
         else:
@@ -455,7 +455,7 @@ class GaleraAgent(ResourceAgent):
             self.logger.info("Set new cluster UUID %s", self.uuid)
             self.cluster_uuid = self.uuid
         # Trigger promotion of all remaining nodes
-        if not self.master_unames:
+        if not self.current_master_unames:
             self.logger.info("Triggering promotion of all peers")
             for peer in self.meta_notify_all_peers:
                 if peer != self:
