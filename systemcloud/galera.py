@@ -61,7 +61,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 import ocf
-from systemcloud.agent import ResourceAgent
+from systemcloud.agent import MultiStateResourceAgent
 
 ZERO_UUID_STRING = str(UUID(int=0))
 
@@ -161,7 +161,7 @@ class GaleraState(object):
     __nonzero__ = __bool__
 
 
-class GaleraAgent(ResourceAgent):
+class GaleraAgent(MultiStateResourceAgent):
     """A Galera resource agent"""
 
     metadata = METADATA
@@ -360,18 +360,6 @@ class GaleraAgent(ResourceAgent):
         bootstrap = max(members, key=lambda x: (x.seqno, x.node))
         self.logger.info("Bootstrapping %s" % bootstrap.node)
         return bootstrap
-
-    def action_validate(self):
-        """Validate configuration"""
-        if not self.is_master_slave:
-            raise ocf.ConfiguredError("Must be a master/slave resource")
-        if not self.meta_notify:
-            raise ocf.ConfiguredError("Must have notifications enabled")
-        if self.meta_master_node_max > 1:
-            raise ocf.ConfiguredError("Must have only one master per node")
-        if self.meta_master_max <= 1:
-            raise ocf.ConfiguredError("Must have more than one master")
-        return ocf.SUCCESS
 
     def action_monitor(self):
         """Monitor resource"""

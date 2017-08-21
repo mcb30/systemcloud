@@ -82,3 +82,20 @@ class ResourceAgent(ocf.ResourceAgent):
         if output:
             self.logger.info(output)
         return ocf.SUCCESS
+
+
+class MultiStateResourceAgent(ResourceAgent):
+    """A multi-state (master-slave) resource agent for a systemd service"""
+    # pylint: disable=locally-disabled, abstract-method
+
+    def action_validate(self):
+        """Validate configuration"""
+        if not self.is_master_slave:
+            raise ocf.ConfiguredError("Must be a master/slave resource")
+        if not self.meta_notify:
+            raise ocf.ConfiguredError("Must have notifications enabled")
+        if self.meta_master_node_max > 1:
+            raise ocf.ConfiguredError("Must have only one master per node")
+        if self.meta_master_max <= 1:
+            raise ocf.ConfiguredError("Must have more than one master")
+        return ocf.SUCCESS
