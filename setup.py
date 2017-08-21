@@ -52,5 +52,7 @@ setup(
     data_files=[
         ('/usr/lib/systemd/system/rabbitmq-server.service.d',
          ['data/rabbitmq/systemcloud.conf']),
+        ('/etc/rabbitmq',
+         ['data/rabbitmq/rabbitmq-systemcloud.conf']),
     ],
 )
