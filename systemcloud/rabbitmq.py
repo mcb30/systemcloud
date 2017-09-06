@@ -244,31 +244,31 @@ class RabbitAgent(MultiStateResourceAgent):
         """Reset cluster status files"""
         self.rabbitmqctl_eval('rabbit_node_monitor:reset_cluster_status().')
 
-    def join(self, peer):
+    def join(self, rabbit):
         """Join cluster
 
         This joins a virgin node into a new cluster
         """
-        self.logger.info("Joining via %s", peer.rabbit)
+        self.logger.info("Joining via %s", rabbit)
         self.ensure_application_loaded()
         self.ensure_mnesia_dir()
         self.reset_cluster_status()
-        self.rabbitmqctl_join_cluster(peer.rabbit)
+        self.rabbitmqctl_join_cluster(rabbit)
 
-    def rejoin(self, peer):
+    def rejoin(self, rabbit):
         """Rejoin cluster
 
         This rejoins a node into its existing cluster (via a possibly
         new cluster peer).
         """
-        self.logger.info("Rejoining via %s", peer.rabbit)
+        self.logger.info("Rejoining via %s", rabbit)
         self.ensure_application_loaded()
-        self.rabbitmqctl_update_cluster_nodes(peer.rabbit)
+        self.rabbitmqctl_update_cluster_nodes(rabbit)
 
-    def forget(self, peer):
+    def forget(self, rabbit):
         """Forget cluster peer"""
-        self.logger.info("Forgetting %s", peer.rabbit)
-        self.rabbitmqctl_forget_cluster_node(peer.rabbit)
+        self.logger.info("Forgetting %s", rabbit)
+        self.rabbitmqctl_forget_cluster_node(rabbit)
 
     def choose_bootstrap(self):
         """Choose a bootstrap node"""
@@ -335,20 +335,22 @@ class RabbitAgent(MultiStateResourceAgent):
         masters = self.current_master_peers
         if masters:
             if self.state:
-                self.rejoin(masters[0])
+                self.rejoin(masters[0].rabbit)
             else:
-                self.join(masters[0])
+                self.join(masters[0].rabbit)
         else:
             if self.state:
                 self.logger.info("Forcing boot")
                 self.rabbitmqctl_force_boot()
+        # Start application
+        self.rabbitmqctl_start_app()
+        # Forget any stale cluster nodes, if applicable
+        if not masters:
             old = set(rabbit for peer in peers for rabbit in peer.known_rabbits)
             new = set(peer.rabbit for peer in peers)
             forget = (old - new)
-            for peer in forget:
-                self.forget(peer)
-        # Start application
-        self.rabbitmqctl_start_app()
+            for rabbit in forget:
+                self.forget(rabbit)
         # Clear stored state
         del self.state
         # Trigger promotion of all remaining nodes, if applicable
