@@ -364,7 +364,8 @@ class RabbitAgent(MultiStateResourceAgent):
     def action_demote(self):
         """Demote resource"""
         self.logger.info("Demoting")
-        self.rabbitmqctl_stop_app()
+        if self.is_running:
+            self.rabbitmqctl_stop_app()
         self.state = self.read_state()
 
     def action_stop(self):
