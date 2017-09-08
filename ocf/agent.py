@@ -10,6 +10,7 @@ from ocf.constants import SUCCESS, NOT_RUNNING
 from ocf.types import from_ocf
 from ocf.exceptions import OcfError, GenericError, UnimplementedError
 from ocf.attribute import NodeNameInstanceAttribute
+from ocf.crm import ClusterResourceManager as crm
 
 _stderr = logging.StreamHandler()
 _syslog = logging.handlers.SysLogHandler(address='/dev/log')
@@ -113,6 +114,7 @@ class Notification(object):
 
 class ResourceAgent(object):
     """An OCF resource agent"""
+    # pylint: disable=locally-disabled, too-many-instance-attributes
 
     description = ''
     metadata = ''
@@ -125,6 +127,7 @@ class ResourceAgent(object):
         self.node = (node if node is not None else self.meta_on_node)
         self.parameter_cache = {}
         self.attribute_cache = {}
+        self.all_unames_cache = None
         self._logger = None
 
     def __repr__(self):
@@ -382,6 +385,21 @@ class ResourceAgent(object):
         """Notification object"""
         if self.meta_notify_type:
             return Notification(self)
+
+    @property
+    def all_unames(self):
+        """Get all node names"""
+        if self.all_unames_cache is None:
+            # Use notification name list if available, otherwise query CRM
+            self.all_unames_cache = self.meta_notify_all_unames
+            if self.all_unames_cache is None:
+                self.all_unames_cache = crm.all_unames()
+        return self.all_unames_cache
+
+    @property
+    def all_peers(self):
+        """Get all peers"""
+        return [self.peer(x) for x in self.all_unames]
 
     @property
     def is_master_slave(self):

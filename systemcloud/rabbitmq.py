@@ -271,7 +271,7 @@ class RabbitAgent(BootstrappingAgent):
 
     def choose_bootstrap(self):
         """Choose a bootstrap node"""
-        peers = self.meta_notify_all_peers
+        peers = self.all_peers
         unreported = [x for x in peers if x.state is None]
         if unreported:
             self.logger.info("Waiting for reported state from %s",
@@ -310,7 +310,7 @@ class RabbitAgent(BootstrappingAgent):
         self.rabbitmqctl_start_app()
         # Forget any stale cluster nodes, if applicable
         if self.is_bootstrap:
-            peers = self.meta_notify_all_peers
+            peers = self.all_peers
             old = set(rabbit for peer in peers for rabbit in peer.known_rabbits)
             new = set(peer.rabbit for peer in peers)
             forget = (old - new)

@@ -1,6 +1,7 @@
 """Cluster resource manager"""
 
 import subprocess
+from lxml import etree
 from ocf.constants import ERR_CONFIGURED
 from ocf.exceptions import GenericError
 from ocf.types import from_ocf, to_ocf
@@ -8,6 +9,22 @@ from ocf.types import from_ocf, to_ocf
 
 class ClusterResourceManager(object):
     """Cluster resource manager"""
+
+    @staticmethod
+    def _crm_mon_xml():
+        """Invoke crm_mon to query cluster status as XML"""
+        command = ('crm_mon', '--as-xml')
+        try:
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+            return etree.fromstring(output)
+        except subprocess.CalledProcessError as e:
+            raise GenericError(e.output or e.returncode)
+
+    @classmethod
+    def all_unames(cls):
+        """Get list of all cluster node names"""
+        xml = cls._crm_mon_xml()
+        return [x.get('name') for x in xml.find('nodes').iterchildren()]
 
     @staticmethod
     def _crm_attribute(name, node, lifetime, *args):

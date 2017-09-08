@@ -208,7 +208,7 @@ class GaleraAgent(BootstrappingAgent):
             "# Last regenerated: %s\n" % datetime.now(),
             "#\n",
             "# This node: %s\n" % self.node,
-            "# All nodes: %s\n" % ' '.join(self.meta_notify_all_unames),
+            "# All nodes: %s\n" % ' '.join(self.all_unames),
             "# Master nodes: %s\n" % ' '.join(masters),
             "#\n",
             "[mysqld]\n",
@@ -332,7 +332,7 @@ class GaleraAgent(BootstrappingAgent):
         tie-breaker to ensure that the same choice is made when
         multiple nodes execute this code in parallel.
         """
-        peers = self.meta_notify_all_peers
+        peers = self.all_peers
         unreported = [x for x in peers if x.state is None]
         if unreported:
             self.logger.info("Waiting for reported state from %s",

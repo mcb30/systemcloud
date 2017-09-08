@@ -190,7 +190,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
     def trigger_promote_all(self):
         """Trigger promotion of all other nodes"""
         self.logger.info("Triggering promotion of all peers")
-        for peer in self.meta_notify_all_peers:
+        for peer in self.all_peers:
             if peer != self:
                 peer.trigger_promote()
 
