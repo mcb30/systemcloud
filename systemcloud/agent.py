@@ -47,13 +47,29 @@ class ResourceAgent(ocf.ResourceAgent):
         """Stop a service via systemctl"""
         return self.systemctl('stop', unit)
 
+    def service_start(self):
+        """Start service"""
+        self.systemctl_start(self.service)
+
+    def service_stop(self):
+        """Stop service"""
+        self.systemctl_stop(self.service)
+
+    @property
+    def service_is_running(self):
+        """Check if service is running"""
+        try:
+            self.systemctl_is_active(self.service)
+            return True
+        except ocf.GenericError:
+            return False
+
     def action_monitor(self):
         """Monitor resource"""
         self.action_validate()
-        try:
-            self.systemctl_is_active()
+        if self.service_is_running:
             return ocf.SUCCESS
-        except ocf.GenericError:
+        else:
             return ocf.NOT_RUNNING
 
     def action_notify(self):
@@ -67,26 +83,46 @@ class ResourceAgent(ocf.ResourceAgent):
     def action_start(self):
         """Start resource"""
         self.logger.info("Starting")
+        if self.service_is_running:
+            self.service_stop()
         self.reconfigure()
-        output = self.systemctl_start()
-        if output:
-            self.logger.info(output)
+        self.service_start()
         return ocf.SUCCESS
 
     def action_stop(self):
         """Stop resource"""
-        self.action_validate()
         self.logger.info("Stopping")
+        self.action_validate()
         self.reconfigure()
-        output = self.systemctl_stop()
-        if output:
-            self.logger.info(output)
+        self.service_stop()
         return ocf.SUCCESS
 
 
 class MultiStateResourceAgent(ResourceAgent):
     """A multi-state (master-slave) resource agent for a systemd service"""
     # pylint: disable=locally-disabled, abstract-method
+
+    @property
+    def master_service(self):
+        """Master service name"""
+        return self.service
+
+    def master_start(self):
+        """Start master service"""
+        self.systemctl_start(self.master_service)
+
+    def master_stop(self):
+        """Stop master service"""
+        self.systemctl_stop(self.master_service)
+
+    @property
+    def master_is_running(self):
+        """Check if master service is running"""
+        try:
+            self.systemctl_is_active(self.master_service)
+            return True
+        except ocf.GenericError:
+            return False
 
     def action_validate(self):
         """Validate configuration"""
@@ -98,4 +134,97 @@ class MultiStateResourceAgent(ResourceAgent):
             raise ocf.ConfiguredError("Must have only one master per node")
         if self.meta_master_max <= 1:
             raise ocf.ConfiguredError("Must have more than one master")
+        return ocf.SUCCESS
+
+    def action_monitor(self):
+        """Monitor resource"""
+        self.action_validate()
+        if self.service_is_running:
+            if self.master_is_running:
+                return ocf.RUNNING_MASTER
+            else:
+                return ocf.SUCCESS
+        else:
+            return ocf.NOT_RUNNING
+
+    def action_promote(self):
+        """Promote resource"""
+        self.logger.info("Promoting")
+        if self.master_is_running:
+            self.master_stop()
+        self.reconfigure()
+        self.master_start()
+        return ocf.SUCCESS
+
+    def action_demote(self):
+        """Demote resource"""
+        self.logger.info("Demoting")
+        self.reconfigure()
+        self.master_stop()
+        return ocf.SUCCESS
+
+
+class BootstrappingAgent(MultiStateResourceAgent):
+    """A resource agent using a bootstrap node"""
+    # pylint: disable=locally-disabled, abstract-method
+
+    started = ocf.NodeInstanceNameAttribute('started', bool, lifetime='reboot')
+
+    @property
+    def is_bootstrap(self):
+        """Check if this is the bootstrap node"""
+        return (not self.meta_notify_master_unames and
+                self.node in self.meta_notify_promote_unames)
+
+    def choose_bootstrap(self):
+        """Choose bootstrap node"""
+        raise NotImplementedError
+
+    def action_monitor(self):
+        """Monitor resource"""
+        self.action_validate()
+        # Check for the explicit "started" attribute (with reboot
+        # lifetime) to ensure that the node has gone through the
+        # normal start/promote sequence
+        if not self.started:
+            return ocf.NOT_RUNNING
+        return super(BootstrappingAgent, self).action_monitor()
+
+    def action_start(self):
+        """Start resource"""
+        # Start slave service
+        super(BootstrappingAgent, self).action_start()
+        # Prevent automatic promotion on restart
+        self.trigger_demote()
+        # Join existing cluster or bootstrap new cluster, as applicable
+        if self.current_master_unames:
+            self.logger.info("Triggering promotion")
+            self.trigger_promote()
+        else:
+            bootstrap = self.choose_bootstrap()
+            if bootstrap:
+                self.logger.info("Triggering promotion of %s", bootstrap.node)
+                bootstrap.trigger_promote()
+        # Record as started
+        self.started = True
+        return ocf.SUCCESS
+
+    def action_promote(self):
+        """Promote resource"""
+        # Start master service
+        super(BootstrappingAgent, self).action_promote()
+        # Trigger promotion of all remaining nodes, if applicable
+        if self.is_bootstrap:
+            self.logger.info("Triggering promotion of all peers")
+            for peer in self.meta_notify_all_peers:
+                if peer != self:
+                    peer.trigger_promote()
+        return ocf.SUCCESS
+
+    def action_stop(self):
+        """Stop resource"""
+        # Stop slave service
+        super(BootstrappingAgent, self).action_stop()
+        # Record as not started
+        del self.started
         return ocf.SUCCESS

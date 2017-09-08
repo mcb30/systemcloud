@@ -61,7 +61,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 import ocf
-from systemcloud.agent import MultiStateResourceAgent
+from systemcloud.agent import BootstrappingAgent
 
 ZERO_UUID_STRING = str(UUID(int=0))
 
@@ -161,7 +161,7 @@ class GaleraState(object):
     __nonzero__ = __bool__
 
 
-class GaleraAgent(MultiStateResourceAgent):
+class GaleraAgent(BootstrappingAgent):
     """A Galera resource agent"""
 
     metadata = METADATA
@@ -172,7 +172,6 @@ class GaleraAgent(MultiStateResourceAgent):
 
     cluster_uuid = ocf.InstanceNameAttribute('uuid', str)
     state = ocf.NodeInstanceNameAttribute('state', GaleraState)
-    started = ocf.NodeInstanceNameAttribute('started', bool, lifetime='reboot')
 
     @property
     def my_cnf_d_file(self):
@@ -361,64 +360,28 @@ class GaleraAgent(MultiStateResourceAgent):
         self.logger.info("Bootstrapping %s" % bootstrap.node)
         return bootstrap
 
-    def action_monitor(self):
-        """Monitor resource"""
-        # Fail if parameters are invalid
-        self.action_validate()
-        # Refresh timestamp on MySQL configuration file
-        if self.meta_interval:
-            os.utime(self.my_cnf_d_file, None)
-        # Check for the explicit "started" attribute (with reboot
-        # lifetime) to ensure that the node has gone through the
-        # normal start/promote sequence, and then check the status of
-        # the underlying database service.
-        if self.started:
-            try:
-                self.systemctl_status(self.service)
-                return ocf.RUNNING_MASTER
-            except ocf.GenericError:
-                return ocf.SUCCESS
-        else:
-            return ocf.NOT_RUNNING
-
-    def action_start(self):
-        """Start resource"""
-        self.logger.info("Starting")
-        # Ensure underlying database service is not accidentally running
-        self.systemctl_stop(self.service)
-        # Prevent automatic promotion on restart
-        self.trigger_demote()
-        # Rewrite configuration files
-        self.reconfigure()
+    def service_start(self):
+        """Start slave service"""
         # Record state parameters (performing recovery if needed)
         self.state = self.read_grastate() or self.recover_grastate()
         # Check that UUID matches cluster UUID, if already set
         if self.cluster_uuid is not None:
             if self.uuid not in (ZERO_UUID_STRING, self.cluster_uuid):
                 raise ocf.GenericError("UUID does not match cluster UUID")
-        # Join existing cluster or bootstrap new cluster, as applicable
-        if self.current_master_unames:
-            self.logger.info("Triggering promotion")
-            self.trigger_promote()
-        else:
-            bootstrap = self.choose_bootstrap()
-            if bootstrap:
-                self.logger.info("Triggering promotion of %s", bootstrap.node)
-                bootstrap.trigger_promote()
-        # Record as started
-        self.started = True
-        return ocf.SUCCESS
 
-    def action_promote(self):
-        """Promote resource"""
-        self.logger.info("Promoting")
+    @property
+    def service_is_running(self):
+        """Check is slave service is running"""
+        # Nothing actually runs while in the slave state
+        return self.started
+
+    def master_start(self):
+        """Start master service"""
         # Check that UUID matches cluster UUID, if already set
         if self.cluster_uuid is not None:
             if self.uuid not in (ZERO_UUID_STRING, self.cluster_uuid):
                 raise ocf.GenericError("UUID does not match cluster UUID")
-        # Update configuration file
-        self.reconfigure()
-        # Start underlying database service
+        # Start service (in normal mode)
         self.logger.info("Beginning at %s", self.state)
         self.systemctl_start(self.service)
         # Validate and update recorded state
@@ -432,30 +395,12 @@ class GaleraAgent(MultiStateResourceAgent):
         if self.cluster_uuid is None:
             self.logger.info("Set new cluster UUID %s", self.uuid)
             self.cluster_uuid = self.uuid
-        # Trigger promotion of all remaining nodes
-        if not self.current_master_unames:
-            self.logger.info("Triggering promotion of all peers")
-            for peer in self.meta_notify_all_peers:
-                if peer != self:
-                    peer.trigger_promote()
-        return ocf.SUCCESS
 
-    def action_demote(self):
-        """Demote resource"""
-        self.logger.info("Demoting")
-        # Stop underlying database service
+    def master_stop(self):
+        """Stop master service"""
+        # Stop service
         self.systemctl_stop(self.service)
         # Record state parameters
         state = self.read_grastate()
         if state is not None:
             self.state = state
-        return ocf.SUCCESS
-
-    def action_stop(self):
-        """Stop resource"""
-        self.logger.info("Stopping")
-        # Record as stopped.  This will cause the status to be
-        # reported as "not running", and enforce the expected sqeuence
-        # of state transitions after restart.
-        del self.started
-        return ocf.SUCCESS

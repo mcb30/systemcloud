@@ -13,7 +13,7 @@ import subprocess
 from collections import namedtuple
 
 import ocf
-from systemcloud.agent import MultiStateResourceAgent
+from systemcloud.agent import BootstrappingAgent
 
 DEFAULT_SERVICE = "rabbitmq-server.service"
 DEFAULT_CONFIG = "/etc/rabbitmq/rabbitmq-systemcloud.conf"
@@ -110,7 +110,7 @@ class RabbitState(object):
     __nonzero__ = __bool__
 
 
-class RabbitAgent(MultiStateResourceAgent):
+class RabbitAgent(BootstrappingAgent):
     """A RabbitMQ resource agent"""
 
     metadata = METADATA
@@ -119,7 +119,6 @@ class RabbitAgent(MultiStateResourceAgent):
     config = ocf.Parameter('config', str, DEFAULT_CONFIG)
 
     state = ocf.NodeInstanceNameAttribute('state', RabbitState)
-    started = ocf.NodeInstanceNameAttribute('started', bool, lifetime='reboot')
 
     @property
     def rabbit(self):
@@ -202,7 +201,7 @@ class RabbitAgent(MultiStateResourceAgent):
         self.rabbitmqctl('update_cluster_nodes', cluster_node)
 
     @property
-    def is_running(self):
+    def app_is_running(self):
         """Check if application is running via rabbitmqctl"""
         return self.rabbitmqctl_eval('rabbit:is_running().') == 'true'
 
@@ -284,68 +283,34 @@ class RabbitAgent(MultiStateResourceAgent):
         self.logger.info("Bootstrapping %s" % bootstrap.node)
         return bootstrap
 
-    def action_monitor(self):
-        """Monitor resource"""
-        self.action_validate()
-        # Check for the explicit "started" attribute (with reboot
-        # lifetime) to ensure that the node has gone through the
-        # normal start/promote sequence
-        if not self.started:
-            return ocf.NOT_RUNNING
-        # Check if the systemd service is running
-        try:
-            self.systemctl_is_active()
-        except ocf.GenericError:
-            return ocf.NOT_RUNNING
-        # Check if the application is running
-        if self.is_running:
-            return ocf.RUNNING_MASTER
-        else:
-            return ocf.SUCCESS
-
-    def action_start(self):
-        """Start resource"""
-        self.logger.info("Starting")
-        # Ensure service is started but application is stopped
-        self.systemctl_start()
-        if self.is_running:
+    def service_start(self):
+        """Start slave service"""
+        # Start service
+        self.systemctl_start(self.service)
+        # Ensure application is stopped
+        if self.app_is_running:
             self.rabbitmqctl_stop_app()
-        # Prevent automatic promotion on restart
-        self.trigger_demote()
         # Record state
         self.state = self.read_state()
-        # Join existing cluster or bootstrap new cluster, as applicable
-        if self.current_master_unames:
-            self.logger.info("Triggering promotion")
-            self.trigger_promote()
-        else:
-            bootstrap = self.choose_bootstrap()
-            if bootstrap:
-                self.logger.info("Triggering promotion of %s", bootstrap.node)
-                bootstrap.trigger_promote()
-        # Record as started
-        self.started = True
-        return ocf.SUCCESS
 
-    def action_promote(self):
-        """Promote resource"""
-        self.logger.info("Promoting")
+    def master_start(self):
+        """Start master service"""
         # Start or join/rejoin cluster as needed
-        peers = self.meta_notify_all_peers
-        masters = self.current_master_peers
-        if masters:
-            if self.state:
-                self.rejoin(masters[0].rabbit)
-            else:
-                self.join(masters[0].rabbit)
-        else:
+        if self.is_bootstrap:
             if self.state:
                 self.logger.info("Forcing boot")
                 self.rabbitmqctl_force_boot()
+        else:
+            master = self.current_master_peers[0]
+            if self.state:
+                self.rejoin(master.rabbit)
+            else:
+                self.join(master.rabbit)
         # Start application
         self.rabbitmqctl_start_app()
         # Forget any stale cluster nodes, if applicable
-        if not masters:
+        if self.is_bootstrap:
+            peers = self.meta_notify_all_peers
             old = set(rabbit for peer in peers for rabbit in peer.known_rabbits)
             new = set(peer.rabbit for peer in peers)
             forget = (old - new)
@@ -353,24 +318,15 @@ class RabbitAgent(MultiStateResourceAgent):
                 self.forget(rabbit)
         # Clear stored state
         del self.state
-        # Trigger promotion of all remaining nodes, if applicable
-        if not masters:
-            self.logger.info("Triggering promotion of all peers")
-            for peer in peers:
-                if peer != self:
-                    peer.trigger_promote()
-        return ocf.SUCCESS
 
-    def action_demote(self):
-        """Demote resource"""
-        self.logger.info("Demoting")
-        if self.is_running:
+    def master_stop(self):
+        """Stop master service"""
+        # Stop application
+        if self.app_is_running:
             self.rabbitmqctl_stop_app()
+        # Record state
         self.state = self.read_state()
 
-    def action_stop(self):
-        """Stop resource"""
-        self.logger.info("Stopping")
-        self.systemctl_stop()
-        del self.started
-        return ocf.SUCCESS
+    @property
+    def master_is_running(self):
+        return self.app_is_running
