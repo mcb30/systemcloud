@@ -180,6 +180,20 @@ class BootstrappingAgent(MultiStateResourceAgent):
         """Choose bootstrap node"""
         raise NotImplementedError
 
+    def trigger_promote_bootstrap(self):
+        """Trigger promotion of bootstrap node (if any)"""
+        bootstrap = self.choose_bootstrap()
+        if bootstrap:
+            self.logger.info("Triggering promotion of %s", bootstrap.node)
+            bootstrap.trigger_promote()
+
+    def trigger_promote_all(self):
+        """Trigger promotion of all other nodes"""
+        self.logger.info("Triggering promotion of all peers")
+        for peer in self.meta_notify_all_peers:
+            if peer != self:
+                peer.trigger_promote()
+
     def action_monitor(self):
         """Monitor resource"""
         self.action_validate()
@@ -188,7 +202,19 @@ class BootstrappingAgent(MultiStateResourceAgent):
         # normal start/promote sequence
         if not self.started:
             return ocf.NOT_RUNNING
-        return super(BootstrappingAgent, self).action_monitor()
+        # Get service status
+        status = super(BootstrappingAgent, self).action_monitor()
+        # If we are still waiting for bootstrapping to complete, then
+        # redo the bootstrap calculation to pick up any changes to the
+        # cluster topology.  Do not allow bootstrapping recalculation
+        # to break status monitoring
+        if status == ocf.SUCCESS:
+            # pylint: disable=locally-disabled, broad-except
+            try:
+                self.trigger_promote_bootstrap()
+            except Exception as e:
+                self.logger.exception(str(e))
+        return status
 
     def action_start(self):
         """Start resource"""
@@ -201,10 +227,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
             self.logger.info("Triggering promotion")
             self.trigger_promote()
         else:
-            bootstrap = self.choose_bootstrap()
-            if bootstrap:
-                self.logger.info("Triggering promotion of %s", bootstrap.node)
-                bootstrap.trigger_promote()
+            self.trigger_promote_bootstrap()
         # Record as started
         self.started = True
         return ocf.SUCCESS
@@ -215,10 +238,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
         super(BootstrappingAgent, self).action_promote()
         # Trigger promotion of all remaining nodes, if applicable
         if self.is_bootstrap:
-            self.logger.info("Triggering promotion of all peers")
-            for peer in self.meta_notify_all_peers:
-                if peer != self:
-                    peer.trigger_promote()
+            self.trigger_promote_all()
         return ocf.SUCCESS
 
     def action_stop(self):
