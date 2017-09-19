@@ -329,4 +329,4 @@ class RabbitAgent(BootstrappingAgent):
 
     @property
     def master_is_running(self):
-        return self.app_is_running
+        return self.service_is_running and self.app_is_running

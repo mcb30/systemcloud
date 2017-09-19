@@ -82,9 +82,10 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def action_start(self):
         """Start resource"""
-        self.logger.info("Starting")
         if self.service_is_running:
+            self.logger.info("Stopping (anomalous)")
             self.service_stop()
+        self.logger.info("Starting")
         self.reconfigure()
         self.service_start()
         return ocf.SUCCESS
@@ -147,11 +148,19 @@ class MultiStateResourceAgent(ResourceAgent):
         else:
             return ocf.NOT_RUNNING
 
+    def action_start(self):
+        """Start resource"""
+        if self.master_is_running:
+            self.logger.info("Demoting (anomalous)")
+            self.master_stop()
+        super(MultiStateResourceAgent, self).action_start()
+
     def action_promote(self):
         """Promote resource"""
-        self.logger.info("Promoting")
         if self.master_is_running:
+            self.logger.info("Demoting (anomalous)")
             self.master_stop()
+        self.logger.info("Promoting")
         self.reconfigure()
         self.master_start()
         return ocf.SUCCESS
