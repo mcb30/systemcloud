@@ -184,6 +184,11 @@ class GaleraAgent(BootstrappingAgent):
         return os.path.join(self.datadir, 'grastate.dat')
 
     @property
+    def gvwstate_file(self):
+        """Galera primary component state file path"""
+        return os.path.join(self.datadir, 'gvwstate.dat')
+
+    @property
     def uuid(self):
         """Galera state UUID"""
         if self.state is not None:
@@ -320,6 +325,21 @@ class GaleraAgent(BootstrappingAgent):
         os.remove(logfile)
         return state
 
+    def delete_empty_gvwstate(self):
+        """Delete empty primary component state file (if present)
+
+        Galera will fail to start up if the primary component state
+        file is present but empty, which is a common situation when
+        recovering from a power failure.  Work around this bug by
+        deleting the empty file.
+        """
+        try:
+            if os.stat(self.gvwstate_file).st_size == 0:
+                self.logger.info("Deleting empty %s", self.gvwstate_file)
+                os.unlink(self.gvwstate_file)
+        except OSError:
+            pass
+
     def choose_bootstrap(self):
         """Choose a bootstrap node
 
@@ -381,6 +401,8 @@ class GaleraAgent(BootstrappingAgent):
         if self.cluster_uuid is not None:
             if self.uuid not in (ZERO_UUID_STRING, self.cluster_uuid):
                 raise ocf.GenericError("UUID does not match cluster UUID")
+        # Delete empty primary component state file, if present
+        self.delete_empty_gvwstate()
         # Start service (in normal mode)
         self.logger.info("Beginning at %s", self.state)
         self.systemctl_start(self.service)
