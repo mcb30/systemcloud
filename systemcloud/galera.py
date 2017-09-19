@@ -230,8 +230,10 @@ class GaleraAgent(BootstrappingAgent):
             ))
         with open(self.my_cnf_d_file, 'wb') as f:
             f.writelines(config)
+            f.flush()
             os.fchmod(f.fileno(), (stat.S_IRUSR | stat.S_IWUSR |
                                    stat.S_IRGRP | stat.S_IROTH))
+            os.fsync(f.fileno())
         if promoting and not masters:
             self.force_safe_to_bootstrap()
 
@@ -263,6 +265,8 @@ class GaleraAgent(BootstrappingAgent):
                 if changed:
                     f.seek(pos)
                     f.write(line)
+                    f.flush()
+                    os.fsync(f.fileno())
                     break
 
     def read_grastate(self):
