@@ -310,9 +310,8 @@ class RabbitAgent(BootstrappingAgent):
         self.rabbitmqctl_start_app()
         # Forget any stale cluster nodes, if applicable
         if self.is_bootstrap:
-            peers = self.all_peers
-            old = set(rabbit for peer in peers for rabbit in peer.known_rabbits)
-            new = set(peer.rabbit for peer in peers)
+            old = set(self.known_rabbits)
+            new = set(peer.rabbit for peer in self.all_peers)
             forget = (old - new)
             for rabbit in forget:
                 self.forget(rabbit)
