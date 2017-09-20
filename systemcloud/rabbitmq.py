@@ -54,6 +54,8 @@ METADATA = """<?xml version="1.0"?>
     <action name="meta-data" timeout="5" />
     <action name="validate-all" timeout="5" />
     <action name="monitor" interval="20" timeout="30" />
+    <action name="monitor" interval="10" timeout="30" role="Master" />
+    <action name="monitor" interval="30" timeout="30" role="Slave" />
     <action name="notify" timeout="5" />
     <action name="start" timeout="30" />
     <action name="stop" timeout="30" />
