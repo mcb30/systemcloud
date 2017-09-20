@@ -148,7 +148,7 @@ class ResourceAgent(object):
     def logger(self):
         """Log writer"""
         if self._logger is None:
-            log_name = (('%s[%s]' % (self.name, self.instance))
+            log_name = (('%s/%s' % (self.name, self.instance))
                         if self.instance is not None else self.name)
             self._logger = logging.getLogger(log_name)
             self._logger.setLevel(logging.DEBUG)
