@@ -19,7 +19,7 @@ class Attribute(object):
 
     def __get__(self, agent, _owner, **kwargs):
         if agent is None:
-            return self.default
+            return self
         if self not in agent.attribute_cache:
             value = crm.query(self.attribute_name(agent), type=self.type,
                               default=self.default, **kwargs)
@@ -36,6 +36,10 @@ class Attribute(object):
         crm.delete(self.attribute_name(agent), **kwargs)
         agent.attribute_cache[self] = None
 
+    def __repr__(self):
+        return "%s(%r, %s, %r)" % (self.__class__.__name__, self.name,
+                                   self.type.__name__, self.default)
+
 
 class NodeAttribute(Attribute):
     """An OCF resource agent per-node attribute"""
@@ -48,7 +52,7 @@ class NodeAttribute(Attribute):
 
     def __get__(self, agent, owner):
         if agent is None:
-            return self.default
+            return self
         return super(NodeAttribute, self).__get__(agent, owner, node=agent.node,
                                                   lifetime=self.lifetime)
 
@@ -59,6 +63,11 @@ class NodeAttribute(Attribute):
     def __delete__(self, agent):
         super(NodeAttribute, self).__delete__(agent, node=agent.node,
                                               lifetime=self.lifetime)
+
+    def __repr__(self):
+        return "%s(%r, %s, %r, %r)" % (self.__class__.__name__, self.name,
+                                       self.type.__name__, self.default,
+                                       self.lifetime)
 
 
 class InstanceNameAttribute(Attribute):
