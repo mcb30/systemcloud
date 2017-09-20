@@ -5,27 +5,19 @@ import logging
 import logging.handlers
 import os
 import sys
+from collections import defaultdict
 
 from ocf.constants import SUCCESS, NOT_RUNNING
 from ocf.types import from_ocf
 from ocf.exceptions import OcfError, GenericError, UnimplementedError
 from ocf.attribute import NodeNameInstanceAttribute
+from ocf.parameter import Parameter
 from ocf.crm import ClusterResourceManager as crm
+from ocf.action import action, Action
 
 _stderr = logging.StreamHandler()
 _syslog = logging.handlers.SysLogHandler(address='/dev/log')
 _syslog.setFormatter(logging.Formatter('%(name)s: %(message)s'))
-
-_ACTIONS = {
-    'meta-data': 'action_metadata',
-    'validate-all': 'action_validate',
-    'notify': 'action_notify',
-    'monitor': 'action_monitor',
-    'start': 'action_start',
-    'promote': 'action_promote',
-    'demote': 'action_demote',
-    'stop': 'action_stop',
-}
 
 def meta_notify_resources_property(label):
     """Construct property for notification resources"""
@@ -151,6 +143,37 @@ class ResourceAgent(object):
             self._logger.addHandler(_stderr)
             self._logger.addHandler(_syslog)
         return self._logger
+
+    @property
+    def parameters(self):
+        """Dictionary of all parameters (keyed by attribute name)"""
+        parameters = {}
+        for cls in reversed(self.__class__.__mro__):
+            for name, value in cls.__dict__.items():
+                if isinstance(value, Parameter):
+                    parameters[name] = value
+        return parameters
+
+    @property
+    def actions(self):
+        """Dictionary of all actions (keyed by action name)"""
+        by_name = {}
+        by_method = defaultdict(Action)
+        for cls in reversed(self.__class__.__mro__):
+            for name in cls.__dict__:
+                value = getattr(cls, name)
+                if hasattr(value, 'actions'):
+                    for desc in value.actions:
+                        act = by_method[name]
+                        act.method = name
+                        act.enabled = desc.enabled
+                        if desc.interval is not None:
+                            act.roles[desc.role].interval = desc.interval
+                        if desc.timeout is not None:
+                            act.roles[desc.role].timeout = desc.timeout
+                        if desc.name is not None:
+                            by_name[desc.name] = name
+        return {k: by_method[v] for k, v in by_name.items()}
 
     @property
     def instance(self):
@@ -414,6 +437,7 @@ class ResourceAgent(object):
         """Trigger demotion by clearing the master score"""
         del self.score
 
+    @action('meta-data', timeout=5)
     def action_metadata(self):
         """Show resource metadata"""
         if self.metadata is None:
@@ -422,36 +446,43 @@ class ResourceAgent(object):
         return SUCCESS
 
     @staticmethod
+    @action('validate-all', timeout=5)
     def action_validate():
         """Validate configuration"""
         return SUCCESS
 
     @staticmethod
+    @action('notify', timeout=5, enabled=False)
     def action_notify():
         """Notify resource of changes"""
         return SUCCESS
 
     @staticmethod
+    @action('monitor', timeout=10, interval=20)
     def action_monitor():
         """Monitor resource"""
         return NOT_RUNNING
 
     @staticmethod
+    @action('start', timeout=120)
     def action_start():
         """Start resource"""
         raise UnimplementedError("No start method")
 
     @staticmethod
+    @action('promote', timeout=120, enabled=False)
     def action_promote():
         """Promote resource"""
         raise UnimplementedError("No promote method")
 
     @staticmethod
+    @action('demote', timeout=120, enabled=False)
     def action_demote():
         """Demote resource"""
         raise UnimplementedError("No demote method")
 
     @staticmethod
+    @action('stop', timeout=120)
     def action_stop():
         """Stop resource"""
         raise UnimplementedError("No stop method")
@@ -465,12 +496,15 @@ class ResourceAgent(object):
         standards for exit codes and exit reason messages.
         """
         # pylint: disable=locally-disabled, broad-except
+        actions = self.actions
         parser = argparse.ArgumentParser(description=self.description)
-        parser.add_argument('action', choices=_ACTIONS.keys())
+        parser.add_argument('action',
+                            choices=sorted(k for k, v in actions.items()
+                                           if v.enabled))
         arg = parser.parse_args(args)
         try:
-            action = getattr(self, _ACTIONS[arg.action])
-            rc = action()
+            method = getattr(self, actions[arg.action].method)
+            rc = method()
         except OcfError as e:
             self.logger.error(str(e))
             e.exit()

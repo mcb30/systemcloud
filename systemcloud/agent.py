@@ -64,6 +64,7 @@ class ResourceAgent(ocf.ResourceAgent):
         except ocf.GenericError:
             return False
 
+    @ocf.action()
     def action_monitor(self):
         """Monitor resource"""
         self.action_validate()
@@ -72,6 +73,7 @@ class ResourceAgent(ocf.ResourceAgent):
         else:
             return ocf.NOT_RUNNING
 
+    @ocf.action(timeout=10)
     def action_notify(self):
         """Notify resource of changes"""
         notification = self.notification
@@ -80,6 +82,7 @@ class ResourceAgent(ocf.ResourceAgent):
         self.reconfigure()
         return ocf.SUCCESS
 
+    @ocf.action()
     def action_start(self):
         """Start resource"""
         if self.service_is_running:
@@ -90,6 +93,7 @@ class ResourceAgent(ocf.ResourceAgent):
         self.service_start()
         return ocf.SUCCESS
 
+    @ocf.action()
     def action_stop(self):
         """Stop resource"""
         self.logger.info("Stopping")
@@ -125,6 +129,7 @@ class MultiStateResourceAgent(ResourceAgent):
         except ocf.GenericError:
             return False
 
+    @ocf.action()
     def action_validate(self):
         """Validate configuration"""
         if not self.is_master_slave:
@@ -137,6 +142,8 @@ class MultiStateResourceAgent(ResourceAgent):
             raise ocf.ConfiguredError("Must have more than one master")
         return ocf.SUCCESS
 
+    @ocf.action(role='Master', interval=10, timeout=30)
+    @ocf.action(role='Slave', interval=30, timeout=30)
     def action_monitor(self):
         """Monitor resource"""
         self.action_validate()
@@ -148,6 +155,7 @@ class MultiStateResourceAgent(ResourceAgent):
         else:
             return ocf.NOT_RUNNING
 
+    @ocf.action()
     def action_start(self):
         """Start resource"""
         if self.master_is_running:
@@ -155,6 +163,7 @@ class MultiStateResourceAgent(ResourceAgent):
             self.master_stop()
         super(MultiStateResourceAgent, self).action_start()
 
+    @ocf.action()
     def action_promote(self):
         """Promote resource"""
         if self.master_is_running:
@@ -165,6 +174,7 @@ class MultiStateResourceAgent(ResourceAgent):
         self.master_start()
         return ocf.SUCCESS
 
+    @ocf.action()
     def action_demote(self):
         """Demote resource"""
         self.logger.info("Demoting")
@@ -203,6 +213,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
             if peer != self:
                 peer.trigger_promote()
 
+    @ocf.action()
     def action_monitor(self):
         """Monitor resource"""
         self.action_validate()
@@ -225,6 +236,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
                 self.logger.exception(str(e))
         return status
 
+    @ocf.action()
     def action_start(self):
         """Start resource"""
         # Start slave service
@@ -241,6 +253,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
         self.started = True
         return ocf.SUCCESS
 
+    @ocf.action()
     def action_promote(self):
         """Promote resource"""
         # Start master service
@@ -250,6 +263,7 @@ class BootstrappingAgent(MultiStateResourceAgent):
             self.trigger_promote_all()
         return ocf.SUCCESS
 
+    @ocf.action()
     def action_stop(self):
         """Stop resource"""
         # Stop slave service

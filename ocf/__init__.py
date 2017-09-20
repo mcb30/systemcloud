@@ -11,4 +11,5 @@ from ocf.parameter import Parameter
 from ocf.attribute import (Attribute, NodeAttribute, InstanceNameAttribute,
                            NameInstanceAttribute, NodeInstanceNameAttribute,
                            NodeNameInstanceAttribute)
+from ocf.action import action
 from ocf.agent import ResourceAgent
