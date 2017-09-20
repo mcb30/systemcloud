@@ -12,6 +12,11 @@ class ResourceAgent(ocf.ResourceAgent):
         """Service name"""
         raise NotImplementedError
 
+    @property
+    def name(self):
+        """Agent name"""
+        return self.service
+
     def reconfigure(self):
         """Reconfigure service
 

@@ -5,11 +5,16 @@ class Parameter(object):
     """An OCF resource agent parameter"""
     # pylint: disable=locally-disabled, too-few-public-methods
 
-    def __init__(self, name, type=str, default=None):
+    def __init__(self, name, type=str, default=None, description=None,
+                 unique=False, required=False):
         # pylint: disable=locally-disabled, redefined-builtin
+        # pylint: disable=locally-disabled, too-many-arguments
         self.name = name
         self.type = type
         self.default = default
+        self.description = description
+        self.unique = unique
+        self.required = required
 
     def __get__(self, agent, _owner):
         if agent is None:

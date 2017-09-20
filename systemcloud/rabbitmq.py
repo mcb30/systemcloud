@@ -18,57 +18,6 @@ from systemcloud.agent import BootstrappingAgent
 DEFAULT_SERVICE = "rabbitmq-server.service"
 DEFAULT_CONFIG = "/etc/rabbitmq/rabbitmq-systemcloud.conf"
 
-METADATA = """<?xml version="1.0"?>
-<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
-<resource-agent name="rabbitmq">
-
-  <version>1.0</version>
-
-  <longdesc lang="en">
-    Resource script for managing RabbitMQ through systemd
-  </longdesc>
-
-  <shortdesc lang="en">
-    Manage a RabbitMQ resource
-  </shortdesc>
-
-  <parameters>
-
-    <parameter name="service" unique="0" required="0">
-      <shortdesc lang="en">
-	Underlying RabbitMQ service name
-      </shortdesc>
-      <content type="string" default="%(service)s" />
-    </parameter>
-
-    <parameter name="config" unique="0" required="0">
-      <shortdesc lang="en">
-	Configuration file fragment path
-      </shortdesc>
-      <content type="string" default="%(config)s" />
-    </parameter>
-
-  </parameters>
-
-  <actions>
-    <action name="meta-data" timeout="5" />
-    <action name="validate-all" timeout="5" />
-    <action name="monitor" interval="20" timeout="30" />
-    <action name="monitor" interval="10" timeout="30" role="Master" />
-    <action name="monitor" interval="30" timeout="30" role="Slave" />
-    <action name="notify" timeout="5" />
-    <action name="start" timeout="30" />
-    <action name="stop" timeout="30" />
-    <action name="promote" timeout="300" />
-    <action name="demote" timeout="120" />
-  </actions>
-
-</resource-agent>
-""" % {
-    'service': DEFAULT_SERVICE,
-    'config': DEFAULT_CONFIG,
-}
-
 
 class RabbitVersion(namedtuple('RabbitVersion', ['major', 'minor'])):
     """RabbitMQ table version number"""
@@ -115,10 +64,13 @@ class RabbitState(object):
 class RabbitAgent(BootstrappingAgent):
     """A RabbitMQ resource agent"""
 
-    metadata = METADATA
+    name = "rabbitmq"
+    version = "1.0"
 
-    service = ocf.Parameter('service', str, DEFAULT_SERVICE)
-    config = ocf.Parameter('config', str, DEFAULT_CONFIG)
+    service = ocf.Parameter('service', str, DEFAULT_SERVICE,
+                            description="Underlying RabbitMQ service name")
+    config = ocf.Parameter('config', str, DEFAULT_CONFIG,
+                           description="Configuration file fragment path")
 
     state = ocf.NodeInstanceNameAttribute('state', RabbitState)
 

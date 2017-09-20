@@ -69,65 +69,6 @@ DEFAULT_SERVICE = "mariadb.service"
 DEFAULT_CONFIG = "/etc/my.cnf.d/mysql-systemcloud.cnf"
 DEFAULT_DATADIR = "/var/lib/mysql"
 
-METADATA = """<?xml version="1.0"?>
-<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
-<resource-agent name="galera">
-
-  <version>1.0</version>
-
-  <longdesc lang="en">
-    Resource script for managing Galera through systemd
-  </longdesc>
-
-  <shortdesc lang="en">
-    Manage a Galera resource
-  </shortdesc>
-
-  <parameters>
-
-    <parameter name="service" unique="0" required="0">
-      <shortdesc lang="en">
-	Underlying database service name
-      </shortdesc>
-      <content type="string" default="%(service)s" />
-    </parameter>
-
-    <parameter name="config" unique="0" required="0">
-      <shortdesc lang="en">
-	Configuration file path
-      </shortdesc>
-      <content type="string" default="%(config)s" />
-    </parameter>
-
-    <parameter name="datadir" unique="0" required="0">
-      <shortdesc lang="en">
-	Data directory
-      </shortdesc>
-      <content type="string" default="%(datadir)s" />
-    </parameter>
-
-  </parameters>
-
-  <actions>
-    <action name="meta-data" timeout="5" />
-    <action name="validate-all" timeout="5" />
-    <action name="monitor" interval="20" timeout="30" />
-    <action name="monitor" interval="10" timeout="30" role="Master" />
-    <action name="monitor" interval="30" timeout="30" role="Slave" />
-    <action name="notify" timeout="5" />
-    <action name="start" timeout="120" />
-    <action name="stop" timeout="120" />
-    <action name="promote" timeout="300" />
-    <action name="demote" timeout="120" />
-  </actions>
-
-</resource-agent>
-""" % {
-    'service': DEFAULT_SERVICE,
-    'config': DEFAULT_CONFIG,
-    'datadir': DEFAULT_DATADIR,
-}
-
 
 class GaleraState(object):
     """Galera database state"""
@@ -164,11 +105,15 @@ class GaleraState(object):
 class GaleraAgent(BootstrappingAgent):
     """A Galera resource agent"""
 
-    metadata = METADATA
+    name = "galera"
+    version = "1.0"
 
-    service = ocf.Parameter('service', str, DEFAULT_SERVICE)
-    config = ocf.Parameter('config', str, DEFAULT_CONFIG)
-    datadir = ocf.Parameter('datadir', str, DEFAULT_DATADIR)
+    service = ocf.Parameter('service', str, DEFAULT_SERVICE,
+                            description="Underlying database service name")
+    config = ocf.Parameter('config', str, DEFAULT_CONFIG,
+                           description="Configuration file path")
+    datadir = ocf.Parameter('datadir', str, DEFAULT_DATADIR,
+                            description="Data directory")
 
     cluster_uuid = ocf.InstanceNameAttribute('uuid', str)
     state = ocf.NodeInstanceNameAttribute('state', GaleraState)

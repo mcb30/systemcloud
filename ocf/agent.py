@@ -6,6 +6,7 @@ import logging.handlers
 import os
 import sys
 from collections import defaultdict
+from lxml import etree
 
 from ocf.constants import SUCCESS, NOT_RUNNING
 from ocf.types import from_ocf
@@ -14,6 +15,8 @@ from ocf.attribute import NodeNameInstanceAttribute
 from ocf.parameter import Parameter
 from ocf.crm import ClusterResourceManager as crm
 from ocf.action import action, Action
+
+DOCTYPE = '<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">'
 
 _stderr = logging.StreamHandler()
 _syslog = logging.handlers.SysLogHandler(address='/dev/log')
@@ -113,8 +116,7 @@ class ResourceAgent(object):
 
     score = NodeNameInstanceAttribute('master', int)
 
-    def __init__(self, name=None, environ=None, node=None):
-        self.name = (name if name is not None else self.__class__.__name__)
+    def __init__(self, environ=None, node=None):
         self.environ = (environ if environ is not None else os.environ)
         self.node = (node if node is not None else self.meta_on_node)
         self.parameter_cache = {}
@@ -125,12 +127,22 @@ class ResourceAgent(object):
     def __repr__(self):
         return '%s[%s](%s)' % (self.name, self.instance, self.node)
 
+    @property
+    def name(self):
+        """Agent name"""
+        return self.__class__.__name__
+
+    @property
+    def version(self):
+        """Agent version"""
+        return "0"
+
     def peer(self, node):
         """Get a peer node agent object"""
         if node == self.node:
             return self
         environ = {k: self.environ.get(k) for k in ('OCF_RESOURCE_INSTANCE',)}
-        return self.__class__(name=self.name, environ=environ, node=node)
+        return self.__class__(environ=environ, node=node)
 
     @property
     def logger(self):
@@ -440,9 +452,41 @@ class ResourceAgent(object):
     @action('meta-data', timeout=5)
     def action_metadata(self):
         """Show resource metadata"""
-        if self.metadata is None:
-            raise UnimplementedError("No metadata available")
-        sys.stdout.write(self.metadata)
+        xml = etree.Element('resource-agent', name=self.name)
+        etree.SubElement(xml, 'version').text = self.version
+        if self.__doc__:
+            longdesc = self.__doc__
+            shortdesc = self.__doc__.splitlines()[0]
+            etree.SubElement(xml, 'longdesc', lang='en').text = longdesc
+            etree.SubElement(xml, 'shortdesc', lang='en').text = shortdesc
+        xml_params = etree.SubElement(xml, 'parameters')
+        for parameter in sorted(self.parameters.values(), key=lambda x: x.name):
+            xml_param = etree.SubElement(xml_params, 'parameter',
+                                         name=parameter.name,
+                                         unique=str(int(parameter.unique)),
+                                         required=str(int(parameter.required)))
+            if parameter.description is not None:
+                etree.SubElement(xml_param, 'shortdesc',
+                                 lang='en').text = parameter.description
+            xml_content = etree.SubElement(xml_param, 'content', type='string')
+            if parameter.default is not None:
+                xml_content.set('default', parameter.default)
+        xml_actions = etree.SubElement(xml, 'actions')
+        actions = self.actions
+        for name in sorted(actions):
+            if actions[name].enabled:
+                for role, details in actions[name].roles.items():
+                    xml_action = etree.SubElement(xml_actions, 'action',
+                                                  name=name)
+                    if role is not None:
+                        xml_action.set('role', role)
+                    if details.interval is not None:
+                        xml_action.set('interval', str(details.interval))
+                    if details.timeout is not None:
+                        xml_action.set('timeout', str(details.timeout))
+        sys.stdout.write(etree.tostring(xml, xml_declaration=True,
+                                        encoding='utf-8', doctype=DOCTYPE,
+                                        pretty_print=True).decode())
         return SUCCESS
 
     @staticmethod
