@@ -258,6 +258,16 @@ class BootstrappingAgent(MultiStateResourceAgent):
     @ocf.action()
     def action_promote(self):
         """Promote resource"""
+        # Refuse concurrent bootstrapping of multiple nodes.  This can
+        # arise if e.g. all nodes have been demoted (but not stopped)
+        # due to a brief network interruption.
+        if not self.meta_notify_master_unames:
+            bootstrap = self.choose_bootstrap()
+            if bootstrap is None:
+                raise ocf.GenericError("Refusing to promote without bootstrap")
+            if bootstrap != self:
+                raise ocf.GenericError("Refusing concurrent promotion with %s" %
+                                       bootstrap.node)
         # Start master service
         super(BootstrappingAgent, self).action_promote()
         # Trigger promotion of all remaining nodes, if applicable
