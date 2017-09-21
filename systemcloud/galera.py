@@ -55,8 +55,10 @@ to accept connections only once the node is in the "master" state.
 """
 
 import os
+import pwd
 import re
 import stat
+import subprocess
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -64,10 +66,12 @@ import ocf
 from systemcloud.agent import BootstrappingAgent
 
 ZERO_UUID_STRING = str(UUID(int=0))
+WSREP_STATE_SYNCED = 4
 
 DEFAULT_SERVICE = "mariadb.service"
-DEFAULT_CONFIG = "/etc/my.cnf.d/mysql-systemcloud.cnf"
+DEFAULT_CONFIG = "/etc/my.cnf.d"
 DEFAULT_DATADIR = "/var/lib/mysql"
+DEFAULT_USER = "mysql"
 
 
 class GaleraState(object):
@@ -111,17 +115,24 @@ class GaleraAgent(BootstrappingAgent):
     service = ocf.Parameter('service', str, DEFAULT_SERVICE,
                             description="Underlying database service name")
     config = ocf.Parameter('config', str, DEFAULT_CONFIG,
-                           description="Configuration file path")
+                           description="Configuration directory")
     datadir = ocf.Parameter('datadir', str, DEFAULT_DATADIR,
                             description="Data directory")
+    user = ocf.Parameter('user', str, DEFAULT_USER,
+                         description="User name")
 
     cluster_uuid = ocf.InstanceNameAttribute('uuid', str)
     state = ocf.NodeInstanceNameAttribute('state', GaleraState)
 
     @property
-    def my_cnf_d_file(self):
+    def config_file(self):
         """MySQL configuration fragment file path"""
-        return self.config
+        return os.path.join(self.config, 'mysql-systemcloud.cnf')
+
+    @property
+    def init_script_file(self):
+        """MySQL initialisation script file path"""
+        return os.path.join(self.config, 'mysql-systemcloud-init.sql')
 
     @property
     def grastate_file(self):
@@ -163,6 +174,8 @@ class GaleraAgent(BootstrappingAgent):
             "#\n",
             "[mysqld]\n",
             "wsrep_cluster_address=gcomm://%s\n" % ','.join(wsrep_peers),
+            "plugin_load_add=auth_socket.so\n",
+            "init_file=%s\n" % self.init_script_file,
         ]
         if self.state:
             config.extend((
@@ -173,12 +186,18 @@ class GaleraAgent(BootstrappingAgent):
                 "wsrep_recover=on\n",
                 "log_error=%s" % wsrep_recovery_log,
             ))
-        with open(self.my_cnf_d_file, 'wb') as f:
-            f.writelines(config)
-            f.flush()
-            os.fchmod(f.fileno(), (stat.S_IRUSR | stat.S_IWUSR |
-                                   stat.S_IRGRP | stat.S_IROTH))
-            os.fsync(f.fileno())
+        script = [
+            "CREATE USER IF NOT EXISTS %s \n" % self.user,
+            "IDENTIFIED VIA unix_socket;\n",
+        ]
+        for filename, contents in ((self.config_file, config),
+                                   (self.init_script_file, script)):
+            with open(filename, 'wb') as f:
+                f.writelines(contents)
+                f.flush()
+                os.fchmod(f.fileno(), (stat.S_IRUSR | stat.S_IWUSR |
+                                       stat.S_IRGRP | stat.S_IROTH))
+                os.fsync(f.fileno())
         if promoting and not masters:
             self.force_safe_to_bootstrap()
 
@@ -329,6 +348,21 @@ class GaleraAgent(BootstrappingAgent):
         self.logger.info("Bootstrapping %s" % bootstrap.node)
         return bootstrap
 
+    def mysql_exec(self, sql):
+        """Execute SQL statement"""
+        user = pwd.getpwnam(self.user)
+        def preexec():
+            """Run as specified user"""
+            os.setgid(user.pw_gid)
+            os.setuid(user.pw_uid)
+        command = ('mysql', '-s', '-u', self.user, '-e', sql)
+        try:
+            output = subprocess.check_output(command, preexec_fn=preexec,
+                                             stderr=subprocess.STDOUT)
+            return output.rstrip('\n')
+        except subprocess.CalledProcessError as e:
+            raise ocf.GenericError(e.output or e.returncode)
+
     def service_start(self):
         """Start slave service"""
         # Record state parameters (performing recovery if needed)
@@ -375,3 +409,18 @@ class GaleraAgent(BootstrappingAgent):
         state = self.read_grastate()
         if state is not None:
             self.state = state
+
+    @property
+    def master_is_running(self):
+        """Check if master service is running"""
+        if not self.systemctl_is_active(self.service):
+            return False
+        output = self.mysql_exec("SHOW STATUS LIKE 'wsrep_local_state'")
+        m = re.match(r'^\s*wsrep_local_state\s+(?P<state>\d+)\s*$', output)
+        if not m:
+            raise ocf.GenericError("Unable to determine state:\n%s" % output)
+        state = int(m.group('state'))
+        if state != WSREP_STATE_SYNCED:
+            self.logger.error("Unexpected local state %d", state)
+            return False
+        return True
