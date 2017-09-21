@@ -232,7 +232,8 @@ class BootstrappingAgent(MultiStateResourceAgent):
         if status == ocf.SUCCESS:
             # pylint: disable=locally-disabled, broad-except
             try:
-                self.trigger_promote_bootstrap()
+                if not self.score:
+                    self.trigger_promote_bootstrap()
             except Exception as e:
                 self.logger.exception(str(e))
         return status
