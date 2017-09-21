@@ -38,7 +38,11 @@ class ResourceAgent(ocf.ResourceAgent):
 
     def systemctl_is_active(self, unit=None):
         """Check activity of a service via systemctl"""
-        return self.systemctl('is-active', unit)
+        try:
+            self.systemctl('is-active', unit)
+            return True
+        except ocf.GenericError:
+            return False
 
     def systemctl_status(self, unit=None):
         """Get service status via systemctl"""
@@ -63,11 +67,7 @@ class ResourceAgent(ocf.ResourceAgent):
     @property
     def service_is_running(self):
         """Check if service is running"""
-        try:
-            self.systemctl_is_active(self.service)
-            return True
-        except ocf.GenericError:
-            return False
+        return self.systemctl_is_active(self.service)
 
     @ocf.action()
     def action_monitor(self):
@@ -128,11 +128,7 @@ class MultiStateResourceAgent(ResourceAgent):
     @property
     def master_is_running(self):
         """Check if master service is running"""
-        try:
-            self.systemctl_is_active(self.master_service)
-            return True
-        except ocf.GenericError:
-            return False
+        return self.systemctl_is_active(self.master_service)
 
     @ocf.action()
     def action_validate(self):
