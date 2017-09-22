@@ -82,6 +82,7 @@ class ResourceAgent(ocf.ResourceAgent):
         self.action_validate()
         if self.service_is_running:
             self.refresh()
+            self.logger.info("Running")
             return ocf.SUCCESS
         else:
             return ocf.NOT_RUNNING
@@ -161,9 +162,11 @@ class MultiStateResourceAgent(ResourceAgent):
         if self.service_is_running:
             if self.master_is_running:
                 self.refresh()
+                self.logger.info("Running (master)")
                 return ocf.RUNNING_MASTER
             else:
                 self.refresh()
+                self.logger.info("Running (slave)")
                 return ocf.SUCCESS
         else:
             return ocf.NOT_RUNNING
