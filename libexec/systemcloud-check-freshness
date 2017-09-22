@@ -1,0 +1,22 @@
+#!/usr/bin/python
+
+"""Check freshness of a file"""
+
+import argparse
+import os
+import sys
+import time
+
+parser = argparse.ArgumentParser(description="Check file freshness")
+parser.add_argument('-m', '--max-age', type=int, default=30,
+                    help="Maximum age (in seconds)")
+parser.add_argument('file')
+args = parser.parse_args()
+
+try:
+    st = os.stat(args.file)
+except OSError:
+    sys.exit(2)
+now = time.time()
+age = (now - st.st_mtime)
+sys.exit(0 if age <= args.max_age else 1)

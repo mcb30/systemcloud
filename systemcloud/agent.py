@@ -1,5 +1,6 @@
 """systemcloud resource agents"""
 
+import os
 import subprocess
 import ocf
 
@@ -24,6 +25,12 @@ class ResourceAgent(ocf.ResourceAgent):
         notify action.
         """
         pass
+
+    def refresh(self):
+        """Refresh flag file"""
+        flag = os.path.join(os.sep, 'run', 'systemcloud-%s.flag' % self.service)
+        with open(flag, 'a'):
+            os.utime(flag, None)
 
     def systemctl(self, action, unit=None):
         """Perform an action via systemctl"""
@@ -74,6 +81,7 @@ class ResourceAgent(ocf.ResourceAgent):
         """Monitor resource"""
         self.action_validate()
         if self.service_is_running:
+            self.refresh()
             return ocf.SUCCESS
         else:
             return ocf.NOT_RUNNING
@@ -85,6 +93,7 @@ class ResourceAgent(ocf.ResourceAgent):
         self.logger.info("Notifying %s: %s", notification,
                          ','.join(notification.unames))
         self.reconfigure()
+        self.refresh()
         return ocf.SUCCESS
 
     @ocf.action()
@@ -95,6 +104,7 @@ class ResourceAgent(ocf.ResourceAgent):
             self.service_stop()
         self.logger.info("Starting")
         self.reconfigure()
+        self.refresh()
         self.service_start()
         return ocf.SUCCESS
 
@@ -150,8 +160,10 @@ class MultiStateResourceAgent(ResourceAgent):
         self.action_validate()
         if self.service_is_running:
             if self.master_is_running:
+                self.refresh()
                 return ocf.RUNNING_MASTER
             else:
+                self.refresh()
                 return ocf.SUCCESS
         else:
             return ocf.NOT_RUNNING
@@ -172,6 +184,7 @@ class MultiStateResourceAgent(ResourceAgent):
             self.master_stop()
         self.logger.info("Promoting")
         self.reconfigure()
+        self.refresh()
         self.master_start()
         return ocf.SUCCESS
 

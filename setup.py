@@ -50,9 +50,18 @@ setup(
         ],
     },
     data_files=[
-        ('/usr/lib/systemd/system/rabbitmq-server.service.d',
-         ['data/rabbitmq/systemcloud.conf']),
-        ('/etc/rabbitmq',
-         ['data/rabbitmq/rabbitmq-systemcloud.conf']),
+        ('/usr/libexec', [
+            'libexec/systemcloud-check-freshness',
+        ]),
+        ('/usr/lib/systemd/system/mariadb.service.d', [
+            'data/systemcloud-common.conf',
+        ]),
+        ('/usr/lib/systemd/system/rabbitmq-server.service.d', [
+            'data/systemcloud-common.conf',
+            'data/rabbitmq/systemcloud.conf',
+        ]),
+        ('/etc/rabbitmq', [
+            'data/rabbitmq/rabbitmq-systemcloud.conf'
+        ]),
     ],
 )
