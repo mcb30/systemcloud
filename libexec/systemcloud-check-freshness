@@ -16,7 +16,16 @@ args = parser.parse_args()
 try:
     st = os.stat(args.file)
 except OSError:
+    sys.stderr.write("Flag file %s is missing\n" % args.file)
+    sys.stderr.write("This service should be started via systemcloud\n")
     sys.exit(2)
+
 now = time.time()
 age = (now - st.st_mtime)
-sys.exit(0 if age <= args.max_age else 1)
+if age > args.max_age:
+    sys.stderr.write("Flag file %s is more than %d seconds old\n" %
+                     (args.file, args.max_age))
+    sys.stderr.write("This service should be started via systemcloud\n")
+    sys.exit(1)
+
+sys.exit(0)
