@@ -18,10 +18,6 @@ from ocf.action import action, Action
 
 DOCTYPE = '<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">'
 
-_stderr = logging.StreamHandler()
-_syslog = logging.handlers.SysLogHandler(address='/dev/log')
-_syslog.setFormatter(logging.Formatter('%(name)s: %(message)s'))
-
 def meta_notify_resources_property(label):
     """Construct property for notification resources"""
     return property(lambda self: self.meta_notify_resources(label))
@@ -148,12 +144,15 @@ class ResourceAgent(object):
     def logger(self):
         """Log writer"""
         if self._logger is None:
+            stderr = logging.StreamHandler()
+            syslog = logging.handlers.SysLogHandler(address='/dev/log')
+            syslog.setFormatter(logging.Formatter('%(name)s: %(message)s'))
             log_name = (('%s/%s' % (self.name, self.instance))
                         if self.instance is not None else self.name)
             self._logger = logging.getLogger(log_name)
             self._logger.setLevel(logging.DEBUG)
-            self._logger.addHandler(_stderr)
-            self._logger.addHandler(_syslog)
+            self._logger.addHandler(stderr)
+            self._logger.addHandler(syslog)
         return self._logger
 
     @property
