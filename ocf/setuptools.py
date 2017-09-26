@@ -3,10 +3,14 @@
 from __future__ import absolute_import
 import os.path
 import textwrap
+from pkg_resources import EntryPoint
 from setuptools.command.install import install
 from setuptools.command.install_scripts import install_scripts
-from setuptools.command.easy_install import ScriptWriter
-from pkg_resources import EntryPoint
+try:
+    from setuptools.command.easy_install import ScriptWriter
+    get_script_header = ScriptWriter.get_header
+except ImportError:
+    from setuptools.command.easy_install import get_script_header
 
 AGENTDIR = os.path.join('lib', 'ocf', 'resource.d')
 
@@ -58,7 +62,7 @@ class ResourceAgentInstallScripts(install_scripts):
         orig_install_dir = self.install_dir
         self.install_dir = self.install_agents
         eps = EntryPoint.parse_map(self.distribution.entry_points)
-        header = ScriptWriter.get_header()
+        header = get_script_header('')
         for ep in eps.get('resource_agents', {}).values():
             filename = os.path.join(*(ep.name.split('.')))
             contents = header + self.agent_template % {
