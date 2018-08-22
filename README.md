@@ -23,6 +23,6 @@ Download the release tgz into ~/rpmbuild/SOURCES and run rpmbuild:
 Once installed, you'll need to create resources. If the Erlang Cookie is not synchronised across hosts, you will run into errors. Doing this properly is left as an exercise for the reader.
 
 ### RabbitMQ
- [root@node1:~]# pcs resource create rmq-openstack ocf:systemcloud:rabbitmq master notify=true master-max=2
+ [root@node1:~]# pcs resource create rabbitmq ocf:systemcloud:rabbitmq master notify=true master-max=2
 
 ### MariaDB+Galera
