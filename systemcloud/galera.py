@@ -127,7 +127,7 @@ class GaleraAgent(BootstrappingAgent):
     @property
     def config_file(self):
         """MySQL configuration fragment file path"""
-        return os.path.join(self.config, 'mysql-systemcloud.cnf')
+        return os.path.join(self.config, '001-mysql-systemcloud.cnf')
 
     @property
     def init_script_file(self):
