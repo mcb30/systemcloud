@@ -17,6 +17,7 @@ Source:		{{{ git_dir_pack }}}
 BuildArch:	noarch
 %if 0%{?fedora}
 BuildRequires:	python2-devel python3-devel
+BuildRequires:	python2-setuptools python3-setuptools
 BuildRequires:	python2-lxml python3-lxml
 %endif
 %if 0%{?rhel}
