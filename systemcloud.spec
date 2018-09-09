@@ -8,7 +8,7 @@
 
 Name:		{{{ git_dir_name }}}
 Version:	{{{ git_dir_version }}}
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	OCF resource agents for building clustered systemd services
 License:	GPLv2+
 URL:		http://github.com/unipartdigital/%{srcname}
