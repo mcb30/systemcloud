@@ -11,7 +11,7 @@ Version:	{{{ git_dir_version }}}
 Release:	1%{?dist}
 Summary:	OCF resource agents for building clustered systemd services
 License:	GPLv2+
-URL:		http://github.com/mcb30/%{srcname}
+URL:		http://github.com/unipartdigital/%{srcname}
 VCS:		{{{ git_dir_vcs }}}
 Source:		{{{ git_dir_pack }}}
 BuildArch:	noarch
