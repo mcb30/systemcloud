@@ -134,7 +134,7 @@ jobs:
           #args: [ .. ]
           dir: git-tag-resource
 
-    - put: rpm-release
-      params:
-        file: rpm/systemcloud*.rpm
-        acl: public-read
+#    - put: rpm-release
+#      params:
+#        file: rpm/systemcloud*.rpm
+#        acl: public-read
