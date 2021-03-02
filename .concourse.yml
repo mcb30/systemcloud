@@ -118,9 +118,9 @@ jobs:
         - name: srpm
         - name: rpm
         run:
-          #path: ./.concourse/centos/buildrpm.sh
-          path: /usr/bin/find
-          #args: [ .. ]
+          path: ./.concourse/centos/buildrpm.sh
+          #path: /usr/bin/find
+          args: [ .. ]
           dir: git-tag-resource
 #  - name: oci-centos
 #    serial_groups: [constructors]
