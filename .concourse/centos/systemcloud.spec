@@ -13,7 +13,7 @@ Summary:	OCF resource agents for building clustered systemd services
 License:	GPLv2+
 URL:		http://github.com/thejambavan/%{srcname}
 #Source:		https://github.com/unipartdigital/%{srcname}/archive/v%{version}/%{srcname}-%{version}.tar.gz
-Source:		https://github.com/thejambavan/systemcloud/archive/test-tag.tar.gz
+Source:		https://github.com/thejambavan/systemcloud/archive/master.tar.gz
 BuildArch:	noarch
 %if 0%{?fedora}
 BuildRequires:	python2-devel python3-devel
