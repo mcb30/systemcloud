@@ -49,7 +49,7 @@ resources:
 - name: systemcloud-test-centos
   type: docker-image
   source:
-    repository: rpmbuild/centos
+    repository: rpmbuild/centos7
 #    username: ((quay-ratpoison-username))
 #    password: ((quay-ratpoison-password))
 #    max_concurrent_downloads: 2
