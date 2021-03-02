@@ -30,14 +30,14 @@ resources:
     - .concourse/ubuntu/*
     - .concourse/debian/*
 
-- name: rpm-release
-  type: s3
-  source:
-    endpoint: https://cdn.mb1.unipart.io
-    bucket: systemcloud-rc
-    regexp: (.*).rpm
-    access_key_id: ((s3-access-key))
-    secret_access_key: ((s3-secret-key))
+#- name: rpm-release
+#  type: s3
+#  source:
+#    endpoint: https://cdn.mb1.unipart.io
+#    bucket: systemcloud-rc
+#    regexp: (.*).rpm
+#    access_key_id: ((s3-access-key))
+#    secret_access_key: ((s3-secret-key))
 
 - name: systemcloud-test-centos
   type: docker-image
