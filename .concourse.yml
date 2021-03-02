@@ -9,20 +9,20 @@ resources:
   type: git
   source:
     branch: master
-    uri: https://github.com/unipartdigital/systemcloud
+    uri: https://github.com/thejambavan/systemcloud
 
 - name: git-tag-resource
   type: git
   source:
     tag_filter: "v[0-9]*"
     branch: master
-    uri: https://github.com/unipartdigital/systemcloud
+    uri: https://github.com/thejambavan/systemcloud
 
 - name: git-ci
   type: git
   source:
     branch: master
-    uri: https://github.com/unipartdigital/systemcloud
+    uri: https://github.com/thejambavan/systemcloud
     paths:
     - .concourse/*
     - .concourse/**/*
@@ -56,34 +56,33 @@ groups:
 - name: master
   jobs:
   - build-pkg-rpm
-- name: env
-  jobs:
-  - oci-centos
+#- name: env
+#  jobs:
+#  - oci-centos
 
 jobs:
-  - name: oci-centos
-    serial_groups: [constructors]
-    build_logs_to_retain: 2
-    plan:
-    - get: git-ci
-      trigger: true
-    - task: gen-container
-      image: systemcloud-test-centos
-      config:
-        platform: linux
-        inputs:
-        - name: git-ci
-        outputs:
-        - name: copycat
-        run:
-          path: sh
-          args:
-          - -exc
-          - |
-            cp -rfv .concourse/centos/Dockerfile ../copycat/
-            cp -rfv .concourse/centos/pkg.lst ../copycat/
-          dir: git-ci
-
+#  - name: oci-centos
+#    serial_groups: [constructors]
+#    build_logs_to_retain: 2
+#    plan:
+#    - get: git-ci
+#      trigger: true
+#    - task: gen-container
+#      image: systemcloud-test-centos
+#      config:
+#        platform: linux
+#        inputs:
+#        - name: git-ci
+#        outputs:
+#        - name: copycat
+#        run:
+#          path: sh
+#          args:
+#          - -exc
+#          - |
+#            cp -rfv .concourse/centos/Dockerfile ../copycat/
+#            cp -rfv .concourse/centos/pkg.lst ../copycat/
+#          dir: git-ci
   - name: build-pkg-rpm
     build_logs_to_retain: 5
     public: true
@@ -93,7 +92,6 @@ jobs:
         trigger: true
       - get: git-clone-resource
         trigger: true
-
     - task: create-rpm
       timeout: 15m
       image: systemcloud-test-centos
@@ -130,7 +128,8 @@ jobs:
         - name: srpm
         - name: rpm
         run:
-          path: ./.concourse/centos/buildrpm.sh
+          #path: ./.concourse/centos/buildrpm.sh
+          path: 'find .'
           args: [ .. ]
           dir: git-tag-resource
 
