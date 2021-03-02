@@ -99,6 +99,7 @@ jobs:
         platform: linux
         inputs:
         - name: git-clone-resource
+        - name: git-ci
         outputs:
         - name: srpm
         - name: rpm
