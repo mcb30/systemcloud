@@ -8,7 +8,7 @@ RPMBUILD_DIR="$(pwd)/${1}/rpmbuild"
 
 mkdir -p ${RPMBUILD_DIR}/{SOURCES,BUILD,RPMS,SRPMS,SPECS}
 
-cp -v rpmspec/systemcloud.spec ${RPMBUILD_DIR}/SPECS/
+cp -v systemcloud.spec ${RPMBUILD_DIR}/SPECS/
 
 #cp -v oregano*.tar.xz ${RPMBUILD_DIR}/SOURCES/
 
