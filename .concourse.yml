@@ -49,7 +49,7 @@ resources:
 - name: systemcloud-test-centos
   type: docker-image
   source:
-    repository: centos
+    repository: rpmbuild/centos
 #    username: ((quay-ratpoison-username))
 #    password: ((quay-ratpoison-password))
 #    max_concurrent_downloads: 2
@@ -122,29 +122,6 @@ jobs:
           #path: /usr/bin/find
           args: [ .. ]
           dir: git-tag-resource
-#  - name: oci-centos
-#    serial_groups: [constructors]
-#    build_logs_to_retain: 2
-#    plan:
-#    - get: git-ci
-#      trigger: true
-#    - task: gen-container
-#      image: systemcloud-test-centos
-#      config:
-#        platform: linux
-#        inputs:
-#        - name: git-ci
-#        outputs:
-#        - name: copycat
-#        run:
-#          path: sh
-#          args:
-#          - -exc
-#          - |
-#            cp -rfv .concourse/centos/Dockerfile ../copycat/
-#            cp -rfv .concourse/centos/pkg.lst ../copycat/
-#          dir: git-ci
-
 #    - put: rpm-release
 #      params:
 #        file: rpm/systemcloud*.rpm
