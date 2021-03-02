@@ -91,10 +91,19 @@ jobs:
         - name: srpm
         - name: rpm
         run:
-          path: .concourse/centos/buildrpm.sh
-          #path: /usr/bin/find
-          #args: [ . ]
+          path: sh
+          user: root
+          args:
+          - -exc
+          - |
+            whoami
+            env
+            ls -lR
+            .concourse/centos/buildrpm.sh ..
           dir: git-head-resource
+
+          #          path: .concourse/centos/buildrpm.sh
+          #args: [ /tmp ]
   - name: build-pkg-rpm-release
     build_logs_to_retain: 5
     public: true
