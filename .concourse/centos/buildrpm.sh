@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Cargo-culted and adapted from https://github.com/drahnr/oregano
 set -x
 set -e
