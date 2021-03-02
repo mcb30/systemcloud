@@ -130,7 +130,7 @@ jobs:
         run:
           #path: ./.concourse/centos/buildrpm.sh
           path: /usr/bin/find
-          args: [ .. ]
+          #args: [ .. ]
           dir: git-tag-resource
 
     - put: rpm-release
