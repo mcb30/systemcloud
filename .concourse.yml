@@ -5,16 +5,23 @@ resource_types:
     repository: quay.io/ahoi/concourse-copr-resource
 
 resources:
-- name: git-clone-resource
-  type: git
-  source:
-    branch: master
-    uri: https://github.com/thejambavan/systemcloud
+#- name: git-clone-resource
+#  type: git
+#  source:
+#    branch: master
+#    uri: https://github.com/thejambavan/systemcloud
 
 - name: git-tag-resource
   type: git
   source:
-    tag_filter: "v[0-9]*"
+    #tag_filter: "v[0-9]*"
+    tag_filter: "test-tag*"
+    branch: master
+    uri: https://github.com/thejambavan/systemcloud
+
+- name: git-head-resource
+  type: git
+  source:
     branch: master
     uri: https://github.com/thejambavan/systemcloud
 
@@ -53,44 +60,24 @@ groups:
 - name: release
   jobs:
   - build-pkg-rpm-release
-- name: master
+- name: head
   jobs:
-  - build-pkg-rpm
-- name: env
-  jobs:
-  - oci-centos
+  - build-pkg-rpm-head
+#- name: env
+#  jobs:
+#  - oci-centos
 
 jobs:
-  - name: oci-centos
-    serial_groups: [constructors]
-    build_logs_to_retain: 2
-    plan:
-    - get: git-ci
-      trigger: true
-    - task: gen-container
-      image: systemcloud-test-centos
-      config:
-        platform: linux
-        inputs:
-        - name: git-ci
-        outputs:
-        - name: copycat
-        run:
-          path: sh
-          args:
-          - -exc
-          - |
-            cp -rfv .concourse/centos/Dockerfile ../copycat/
-            cp -rfv .concourse/centos/pkg.lst ../copycat/
-          dir: git-ci
-  - name: build-pkg-rpm
+  - name: build-pkg-rpm-head
     build_logs_to_retain: 5
     public: true
     plan:
     - in_parallel:
       - get: systemcloud-test-centos
         trigger: true
-      - get: git-clone-resource
+      - get: git-head-resource
+        trigger: true
+      - get: git-ci
         trigger: true
     - task: create-rpm
       timeout: 15m
@@ -98,16 +85,16 @@ jobs:
       config:
         platform: linux
         inputs:
-        - name: git-clone-resource
+        - name: git-head-resource
         - name: git-ci
         outputs:
         - name: srpm
         - name: rpm
         run:
-          path: ./.concourse/centos/buildrpm.sh
-          args: [ .. ]
-          dir: git-clone-resource
-
+          #path: ./.concourse/centos/buildrpm.sh
+          path: /usr/bin/find
+          #args: [ .. ]
+          dir: git-head-resource
   - name: build-pkg-rpm-release
     build_logs_to_retain: 5
     public: true
@@ -117,7 +104,8 @@ jobs:
         trigger: true
       - get: git-tag-resource
         trigger: true
-
+      - get: git-ci
+        trigger: true
     - task: create-rpm
       timeout: 15m
       image: systemcloud-test-centos
@@ -125,6 +113,7 @@ jobs:
         platform: linux
         inputs:
         - name: git-tag-resource
+        - name: git-ci
         outputs:
         - name: srpm
         - name: rpm
@@ -133,6 +122,28 @@ jobs:
           path: /usr/bin/find
           #args: [ .. ]
           dir: git-tag-resource
+#  - name: oci-centos
+#    serial_groups: [constructors]
+#    build_logs_to_retain: 2
+#    plan:
+#    - get: git-ci
+#      trigger: true
+#    - task: gen-container
+#      image: systemcloud-test-centos
+#      config:
+#        platform: linux
+#        inputs:
+#        - name: git-ci
+#        outputs:
+#        - name: copycat
+#        run:
+#          path: sh
+#          args:
+#          - -exc
+#          - |
+#            cp -rfv .concourse/centos/Dockerfile ../copycat/
+#            cp -rfv .concourse/centos/pkg.lst ../copycat/
+#          dir: git-ci
 
 #    - put: rpm-release
 #      params:
