@@ -96,16 +96,16 @@ jobs:
           args:
           - -exc
           - |
-            'whoami'
-            'env'
-            'ls -lR'
-            'mkdir -p ../rpmbuild/{SOURCES,BUILD,RPMS,SRPMS,SPECS}'
-            'cp -v .concourse/centos/systemcloud.spec ../rpmbuild/SPECS/'
-            '.concourse/centos/buildrpm.sh ..'
-            'mkdir -p ../rpmbuild/${1}/{,s}rpm/'
-            'rm -vf ../rpmbuild/RPMS/x86_64/systemcloud-*debug*.rpm'
-            'cp -vf ../rpmbuild/RPMS/x86_64/systemcloud-*.rpm $(pwd)/../rpm/'
-            'cp -vf ../rpmbuild/SRPMS/systemcloud-*.src.rpm $(pwd)/../srpm/'
+            whoami
+            env
+            ls -lR
+            mkdir -p ../rpmbuild/{SOURCES,BUILD,RPMS,SRPMS,SPECS}
+            cp -v .concourse/centos/systemcloud.spec ../rpmbuild/SPECS/
+            .concourse/centos/buildrpm.sh ..
+            mkdir -p ../rpmbuild/${1}/{,s}rpm/
+            rm -vf ../rpmbuild/RPMS/x86_64/systemcloud-*debug*.rpm
+            cp -vf ../rpmbuild/RPMS/x86_64/systemcloud-*.rpm $(pwd)/../rpm/
+            cp -vf ../rpmbuild/SRPMS/systemcloud-*.src.rpm $(pwd)/../srpm/
           dir: git-head-resource
 
           #          path: .concourse/centos/buildrpm.sh
