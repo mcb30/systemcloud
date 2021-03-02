@@ -56,33 +56,33 @@ groups:
 - name: master
   jobs:
   - build-pkg-rpm
-#- name: env
-#  jobs:
-#  - oci-centos
+- name: env
+  jobs:
+  - oci-centos
 
 jobs:
-#  - name: oci-centos
-#    serial_groups: [constructors]
-#    build_logs_to_retain: 2
-#    plan:
-#    - get: git-ci
-#      trigger: true
-#    - task: gen-container
-#      image: systemcloud-test-centos
-#      config:
-#        platform: linux
-#        inputs:
-#        - name: git-ci
-#        outputs:
-#        - name: copycat
-#        run:
-#          path: sh
-#          args:
-#          - -exc
-#          - |
-#            cp -rfv .concourse/centos/Dockerfile ../copycat/
-#            cp -rfv .concourse/centos/pkg.lst ../copycat/
-#          dir: git-ci
+  - name: oci-centos
+    serial_groups: [constructors]
+    build_logs_to_retain: 2
+    plan:
+    - get: git-ci
+      trigger: true
+    - task: gen-container
+      image: systemcloud-test-centos
+      config:
+        platform: linux
+        inputs:
+        - name: git-ci
+        outputs:
+        - name: copycat
+        run:
+          path: sh
+          args:
+          - -exc
+          - |
+            cp -rfv .concourse/centos/Dockerfile ../copycat/
+            cp -rfv .concourse/centos/pkg.lst ../copycat/
+          dir: git-ci
   - name: build-pkg-rpm
     build_logs_to_retain: 5
     public: true
