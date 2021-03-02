@@ -93,7 +93,7 @@ jobs:
         run:
           path: ./.concourse/centos/buildrpm.sh
           #path: /usr/bin/find
-          args: [ .. ]
+          args: [ . ]
           dir: git-head-resource
   - name: build-pkg-rpm-release
     build_logs_to_retain: 5
